@@ -44,8 +44,8 @@ async def run_day(agents,todays_attendance,bottleneck,day):
 
     tasks = []
     for agent in agents:
-        peers = [a for a in agents]
-        tasks.append(agent.propose_deal(day,peers,initial_proposals[agent.id]))  # there could be 2 batches of the same classroom
+        peers = [a for a in agents]   # there could be 2 batches of the same classroom
+        tasks.append(agent.propose_deal(day,peers,initial_proposals[agent.id]))
     all_agreed_batches = await asyncio.gather(*tasks)
 
 

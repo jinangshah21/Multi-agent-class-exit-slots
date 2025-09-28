@@ -55,15 +55,16 @@ class ClassroomAgent:
             # await self.agent.broadcast_message(peers, msg)
 
             # Collect peer evaluations
-            responses = await self.evaluate_peers(batch, day, peers)
+            response = await self.evaluate_peers(batch, day, peers)
 
-            accepted = all(responses)
-            if accepted:
+            # accepted = all(responses)
+            if response:
                 self.assigned_batches.append(batch)
                 agreed_batches.append(batch)
             else:
                 # Modify slot and retry
                 batch["slot"] -= 1
+                print(f"Doing for agent {self.id} and batch_size: {batch['num_students']}")
                 pending_batches.append(batch)
 
         return agreed_batches
@@ -73,25 +74,67 @@ class ClassroomAgent:
         responses = []
         for peer in peers:
 
-
-            # if peer.id == self.id:
-            #     continue
-
-
             # Simple deterministic rule: reject if slot conflicts with previous commitment
             # peer_history = peer.commitment_history.get(day, {})
-            conflict = batch["slot"] in [b["slot"] for b in peer.assigned_batches]
-            if conflict:
-                peer.rejection_count += 1
-                # if peer.rejection_count > peer.max_rejections:
-                #     peer.violations += 1
-                responses.append(False)
-            else:
-                responses.append(True)
+            for pab in peer.assigned_batches:
+                if pab["slot"]==batch["slot"]:
+                    if pab["num_students"]==self.batch_capacity: #colliding batch wont be able to accomadate
+                        peer.rejection_count += 1
+                        # responses.append(False)
+                        # return responses
+                        return False
+
+                    if pab["num_students"]+batch["num_students"]<=self.batch_capacity:
+                        
+                        # print("capacity suffice to accomadate other classroom's complete students")
+                        # print(f"current batch is of agent: {self.id} and colliding batch is of Agent {peer.id}")
+                        # print(f"previous agent's slot num of student {pab['num_students']}")
+                        # print(f"current agent's slot num of student {batch['num_students']}")
+
+                        total_students=pab["num_students"]+batch["num_students"]
+                        pab["num_students"]=total_students
+                        batch["num_students"]=total_students
+                        # responses.append(True)
+                        return True
+                        # return responses
+
+                    else:
+                        print(f"current batch is of agent: {self.id} and colliding batch is of Agent {peer.id}")
+                        students_to_move=self.batch_capacity-pab["num_students"]
+
+                        pab["num_students"]=self.batch_capacity
+                        b1={"slot": pab["slot"], "num_students": self.batch_capacity}
+
+                        self.assigned_batches.append(b1)
+
+
+                        batch["num_students"]=batch["num_students"]-students_to_move
+                        print(batch["num_students"])
+
+                        peer.rejection_count += 1
+                        # if peer.rejection_count > peer.max_rejections:
+                        #     peer.violations += 1
+
+                        # responses.append(False)
+                        # return responses
+                        return False
+
+
+                # else:
+                #     responses.append(True)
+
+            # conflict = batch["slot"] in [b["slot"] for b in peer.assigned_batches]
+            # if conflict:
+            #     peer.rejection_count += 1
+            #     # if peer.rejection_count > peer.max_rejections:
+            #     #     peer.violations += 1
+            #     responses.append(False)
+            # else:
+            #     responses.append(True)
 
 
 
-        return responses
+        return True
 
 
 
