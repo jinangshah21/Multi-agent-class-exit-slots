@@ -24,8 +24,7 @@ def make_daily_sequences(max_list, days, integer=True):
     for _ in range(days):
         day_vals = []
         for v in max_list:
-            # fraction = random.uniform(0.5, 1.0)
-            fraction=1
+            fraction = random.uniform(0.5, 1.0)
             if integer:
                 val = max(1, int(round(fraction * v)))
             else:
