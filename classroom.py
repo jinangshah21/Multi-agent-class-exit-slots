@@ -3,11 +3,11 @@ import asyncio
 from autogen import AssistantAgent
 
 class ClassroomAgent:
-    def __init__(self, cid: str, attendance: int, want_full: float, bottleneck_agent, batch_capacity=10):
+    def __init__(self, cid: str, class_strength: int, want_full: float, bottleneck_agent, batch_capacity=10):
         self.id = cid
-        self.attendance = attendance
+        self.class_strength = class_strength
         self.want_full = want_full
-        self.batch_capacity = batch_capacity
+        self.batch_capacity = batch_capacity  #bottleNeck capacity
         self.assigned_batches = []
         # self.commitment_history = {}  # {day: {peer_id: outcome}}
         self.avg_early = 0.0
@@ -21,9 +21,9 @@ class ClassroomAgent:
             system_message=f"You are classroom agent {cid}. Negotiate exit slots with peers."
         )
 
-    def propose_batches(self):
-        """Initial proposal based on attendance & batch capacity"""
-        remaining = self.attendance
+    def propose_batches(self,classroom_attendance):
+        """Initial proposal based on attendance & bottleneck cap"""
+        remaining = classroom_attendance
         plan = []
         slot = 0
         while remaining > 0:
@@ -31,11 +31,13 @@ class ClassroomAgent:
             plan.append({"slot": slot, "num_students": num})
             remaining -= num
             slot += 1
+        # print(f"intial plan for classroom {self.id}: " )
+        # print(plan)
         return plan
 
-    async def propose_deal(self, day: int, peers: list):
+    async def propose_deal(self, day: int, peers: list, proposed_batches: list):
         """Propose batches one by one and broadcast proposals"""
-        proposed_batches = self.propose_batches()
+        # proposed_batches = self.propose_batches()
         pending_batches = proposed_batches.copy()
         agreed_batches = []
 
@@ -57,6 +59,7 @@ class ClassroomAgent:
 
             accepted = all(responses)
             if accepted:
+                self.assigned_batches.append(batch)
                 agreed_batches.append(batch)
             else:
                 # Modify slot and retry
@@ -69,19 +72,28 @@ class ClassroomAgent:
         """Simulate peer evaluation of a proposed batch"""
         responses = []
         for peer in peers:
-            if peer.id == self.id:
-                continue
+
+
+            # if peer.id == self.id:
+            #     continue
+
+
             # Simple deterministic rule: reject if slot conflicts with previous commitment
             # peer_history = peer.commitment_history.get(day, {})
             conflict = batch["slot"] in [b["slot"] for b in peer.assigned_batches]
             if conflict:
                 peer.rejection_count += 1
-                if peer.rejection_count > peer.max_rejections:
-                    peer.violations += 1
+                # if peer.rejection_count > peer.max_rejections:
+                #     peer.violations += 1
                 responses.append(False)
             else:
                 responses.append(True)
+
+
+
         return responses
+
+
 
     async def commit_batches(self, agreed_batches, day):
         """Commit agreed batches to bottleneck"""
